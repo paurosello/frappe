@@ -88,7 +88,7 @@ ignore_values = {
 	"Print Format": ["disabled"]
 }
 
-ignore_doctypes = ["Page Role", "DocPerm"]
+ignore_doctypes = ["Page Role"]
 
 def import_doc(docdict, data_import=False, pre_process=None, reset_permissions=False):
 	frappe.flags.in_import = True
