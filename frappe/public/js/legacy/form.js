@@ -143,10 +143,11 @@ _f.Frm.prototype.setup_drag_drop = function() {
 				throw "attach error";
 			}
 
-			frappe.upload.upload_file(dataTransfer.files[0], me.attachments.get_args(), {
+			frappe.upload.multifile_upload(dataTransfer.files, me.attachments.get_args(), {
 				callback: function(attachment, r) {
 					me.attachments.attachment_uploaded(attachment, r);
 				},
+
 				confirm_is_private: true
 			});
 		});
@@ -347,7 +348,7 @@ _f.Frm.prototype.refresh_header = function(is_a_different_doc) {
 	this.dashboard.refresh();
 
 	if(this.meta.is_submittable &&
-		frappe.perm.get_perm(this.docname, this.doc).submit &&
+		this.perm[0] && this.perm[0].submit &&
 		! this.is_dirty() &&
 		! this.is_new() &&
 		this.doc.docstatus===0) {
@@ -370,7 +371,7 @@ _f.Frm.prototype.show_web_link = function() {
 }
 
 _f.Frm.prototype.add_web_link = function(path) {
-	this.web_link = this.sidebar.add_user_action("See on Website",
+	this.web_link = this.sidebar.add_user_action(__("See on Website"),
 		function() {}).attr("href", path || this.doc.route).attr("target", "_blank");
 }
 
@@ -414,6 +415,7 @@ _f.Frm.prototype.refresh = function(docname) {
 
 		// read only (workflow)
 		this.read_only = frappe.workflow.is_read_only(this.doctype, this.docname);
+		if (this.read_only) this.set_read_only(true);
 
 		// check if doctype is already open
 		if (!this.opendocs[this.docname]) {
