@@ -11,6 +11,7 @@ class BlogCategory(WebsiteGenerator):
 		self.name = self.category_name
 
 	def on_update(self):
+		WebsiteGenerator.on_update(self)
 		clear_cache()
 
 	def validate(self):

@@ -17,7 +17,7 @@ from frappe.core.page.data_import_tool.data_import_tool import get_data_keys
 
 @frappe.whitelist()
 def upload(rows = None, submit_after_import=None, ignore_encoding_errors=False, no_email=True, overwrite=None,
-	update_only = None, ignore_links=False, pre_process=None, via_console=False):
+	ignore_links=False, pre_process=None, via_console=False):
 	"""upload data"""
 
 	frappe.flags.in_import = True
@@ -32,8 +32,6 @@ def upload(rows = None, submit_after_import=None, ignore_encoding_errors=False, 
 		ignore_encoding_errors = True
 	if not params.get("no_email"):
 		no_email = False
-	if params.get('update_only'):
-		update_only = True
 
 	frappe.flags.mute_emails = no_email
 
@@ -197,7 +195,6 @@ def upload(rows = None, submit_after_import=None, ignore_encoding_errors=False, 
 	if overwrite==None:
 		overwrite = params.get('overwrite')
 
-
 	# delete child rows (if parenttype)
 	parentfield = None
 	if parenttype:
@@ -257,14 +254,11 @@ def upload(rows = None, submit_after_import=None, ignore_encoding_errors=False, 
 					log('Updated row (#%d) %s' % (row_idx + 1, as_link(original.doctype, original.name)))
 					doc = original
 				else:
-					if not update_only:
-						doc = frappe.get_doc(doc)
-						prepare_for_insert(doc)
-						doc.flags.ignore_links = ignore_links
-						doc.insert()
-						log('Inserted row (#%d) %s' % (row_idx + 1, as_link(doc.doctype, doc.name)))
-					else:
-						log('Ignored row (#%d) %s' % (row_idx + 1, row[1]))
+					doc = frappe.get_doc(doc)
+					prepare_for_insert(doc)
+					doc.flags.ignore_links = ignore_links
+					doc.insert()
+					log('Inserted row (#%d) %s' % (row_idx + 1, as_link(doc.doctype, doc.name)))
 				if submit_after_import:
 					doc.submit()
 					log('Submitted row (#%d) %s' % (row_idx + 1, as_link(doc.doctype, doc.name)))

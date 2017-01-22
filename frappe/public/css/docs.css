@@ -132,17 +132,14 @@
 .navbar-new-comments-true {
   background-color: #ff5858;
 }
-.navbar-form .awesomplete {
+#navbar-search {
   width: 300px;
+  background-color: rgba(255, 255, 255, 0.9);
 }
 @media (max-width: 991px) {
-  .navbar-form .awesomplete {
+  #navbar-search {
     width: 250px;
   }
-}
-#navbar-search {
-  width: 100%;
-  background-color: rgba(255, 255, 255, 0.9);
 }
 .navbar .navbar-search-icon {
   color: #6C7680;

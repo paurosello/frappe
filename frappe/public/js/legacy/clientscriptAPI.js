@@ -248,9 +248,7 @@ _f.Frm.prototype.set_query = function(fieldname, opt1, opt2) {
 	} else {
 		// on parent table
 		// set_query(fieldname, query)
-		if(this.fields_dict[fieldname]) {
-			this.fields_dict[fieldname].get_query = opt1;
-		}
+		this.fields_dict[fieldname].get_query = opt1;
 	}
 }
 

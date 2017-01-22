@@ -11,7 +11,6 @@ import json
 import frappe.model.meta
 from frappe.core.page.user_permissions.user_permissions import add, remove, get_permissions
 from frappe.permissions import clear_user_permissions_for_doctype, get_doc_permissions
-from frappe.core.page.permission_manager.permission_manager import update, reset
 
 test_records = frappe.get_test_records('Blog Post')
 
@@ -27,8 +26,8 @@ class TestPermissions(unittest.TestCase):
 		user = frappe.get_doc("User", "test2@example.com")
 		user.add_roles("Blogger")
 
-		reset('Blogger')
-		reset('Blog Post')
+		frappe.db.sql("""update `tabDocPerm` set if_owner=0
+			where parent='Blog Post' and permlevel=0 and permlevel=0 and role='Blogger'""")
 
 		self.set_ignore_user_permissions_if_missing(0)
 
@@ -42,8 +41,12 @@ class TestPermissions(unittest.TestCase):
 		clear_user_permissions_for_doctype("Blog Post")
 		clear_user_permissions_for_doctype("Blogger")
 
-		reset('Blogger')
-		reset('Blog Post')
+		frappe.db.sql("""update `tabDocPerm` set user_permission_doctypes=null, apply_user_permissions=0
+			where parent='Blog Post' and permlevel=0 and apply_user_permissions=1
+			and `read`=1""")
+
+		frappe.db.sql("""update `tabDocPerm` set if_owner=0
+			where parent='Blog Post' and permlevel=0 and permlevel=0 and role='Blogger'""")
 
 		self.set_ignore_user_permissions_if_missing(0)
 
@@ -201,14 +204,17 @@ class TestPermissions(unittest.TestCase):
 		frappe.model.meta.clear_cache("Blog Post")
 
 	def if_owner_setup(self):
-		update('Blog Post', 'Blogger', 0, 'if_owner', 1)
+		frappe.db.sql("""update `tabDocPerm` set if_owner=1
+			where parent='Blog Post' and permlevel=0 and permlevel=0 and role='Blogger'""")
 
 		frappe.permissions.add_user_permission("Blog Category", "_Test Blog Category 1",
 			"test2@example.com")
 		frappe.permissions.add_user_permission("Blogger", "_Test Blogger 1",
 			"test2@example.com")
 
-		update('Blog Post', 'Blogger', 0, 'user_permission_doctypes', json.dumps(["Blog Category"]))
+		frappe.db.sql("""update `tabDocPerm` set user_permission_doctypes=%s
+			where parent='Blog Post' and permlevel=0 and apply_user_permissions=1
+			and `read`=1""", json.dumps(["Blog Category"]))
 
 		frappe.model.meta.clear_cache("Blog Post")
 
@@ -277,8 +283,14 @@ class TestPermissions(unittest.TestCase):
 
 def set_user_permission_doctypes(doctype, role, apply_user_permissions, user_permission_doctypes):
 	user_permission_doctypes = None if not user_permission_doctypes else json.dumps(user_permission_doctypes)
-
-	update(doctype, role, 0, 'apply_user_permissions', 1)
-	update(doctype, role, 0, 'user_permission_doctypes', user_permission_doctypes)
+	frappe.db.sql("""update `tabDocPerm` set apply_user_permissions=%(apply_user_permissions)s,
+		user_permission_doctypes=%(user_permission_doctypes)s
+		where parent=%(doctype)s and permlevel=0
+		and `read`=1 and role=%(role)s""", {
+			"apply_user_permissions": apply_user_permissions,
+			"user_permission_doctypes": user_permission_doctypes,
+			"doctype": doctype,
+			"role": role
+		})
 
 	frappe.clear_cache(doctype=doctype)

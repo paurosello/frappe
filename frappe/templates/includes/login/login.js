@@ -33,7 +33,7 @@ login.bind_events = function() {
 		args.redirect_to = get_url_arg("redirect-to") || '';
 		args.full_name = ($("#signup_fullname").val() || "").trim();
 		if(!args.email || !valid_email(args.email) || !args.full_name) {
-			login.set_indicator(__("Valid email and name required"), 'red');
+			frappe.msgprint(__("Valid email and name required"));
 			return false;
 		}
 		login.call(args);
@@ -46,21 +46,21 @@ login.bind_events = function() {
 		args.cmd = "frappe.core.doctype.user.user.reset_password";
 		args.user = ($("#forgot_email").val() || "").trim();
 		if(!args.user) {
-			login.set_indicator(__("Valid Login id required."), 'red');
+			frappe.msgprint(__("Valid Login id required."));
 			return false;
 		}
 		login.call(args);
 		return false;
 	});
 
-	$(".btn-ldap-login").on("click", function(){
+	$(".btn-ldpa-login").on("click", function(){
 		var args = {};
 		args.cmd = "{{ ldap_settings.method }}";
 		args.usr = ($("#login_email").val() || "").trim();
 		args.pwd = $("#login_password").val();
 		args.device = "desktop";
 		if(!args.usr || !args.pwd) {
-			login.set_indicator(__("Both login and password required"), 'red');
+			frappe.msgprint(__("Both login and password required"));
 			return false;
 		}
 		login.call(args);
@@ -75,47 +75,30 @@ login.route = function() {
 	login[route]();
 }
 
-login.reset_sections = function(hide) {
-	if(hide || hide===undefined) {
-		$("section").toggle(false);
-	}
-	$('section .indicator').each(function() {
-		$(this).removeClass().addClass('indicator').addClass('blue')
-			.text($(this).attr('data-text'));
-	});
-}
-
 login.login = function() {
-	login.reset_sections();
-	$(".for-login").toggle(true);
+	$("form").toggle(false);
+	$(".form-login").toggle(true);
 }
 
 login.forgot = function() {
-	login.reset_sections();
-	$(".for-forgot").toggle(true);
+	$("form").toggle(false);
+	$(".form-forgot").toggle(true);
 }
 
 login.signup = function() {
-	login.reset_sections();
-	$(".for-signup").toggle(true);
+	$("form").toggle(false);
+	$(".form-signup").toggle(true);
 }
 
 
 // Login
-login.call = function(args, callback) {
-	login.set_indicator(__('Verifying...'), 'blue');
+login.call = function(args) {
 	return frappe.call({
 		type: "POST",
 		args: args,
-		callback: callback,
 		freeze: true,
 		statusCode: login.login_handlers
 	});
-}
-
-login.set_indicator = function(message, color) {
-	$('section:visible .indicator')
-		.removeClass().addClass('indicator').addClass(color).text(message)
 }
 
 login.login_handlers = (function() {
@@ -127,7 +110,7 @@ login.login_handlers = (function() {
 
 			var message = default_message;
 			if (data._server_messages) {
-				message = ($.map(JSON.parse(data._server_messages || '[]'), function(v) {
+				message = ($.map(JSON.parse(data._server_messages || '[]'), function() {
 					// temp fix for messages sent as dict
 					try {
 						return JSON.parse(v).message;
@@ -137,22 +120,15 @@ login.login_handlers = (function() {
 				}) || []).join('<br>') || default_message;
 			}
 
-			if(message===default_message) {
-				login.set_indicator(message, 'red');
-			} else {
-				login.reset_sections(false);
-			}
-
+			frappe.msgprint(message);
 		};
 	}
 
 	var login_handlers = {
 		200: function(data) {
 			if(data.message=="Logged In") {
-				login.set_indicator(__("Success"), 'green');
 				window.location.href = get_url_arg("redirect-to") || data.home_page;
 			} else if(data.message=="No App") {
-				login.set_indicator(__("Success"), 'green');
 				if(localStorage) {
 					var last_visited =
 						localStorage.getItem("last_visited")
@@ -169,26 +145,11 @@ login.login_handlers = (function() {
 				} else {
 					window.location.href = data.home_page;
 				}
-			} else if(window.location.hash === '#forgot') {
-				console.log(data.message);
-				if(data.message==='not found') {
-					login.set_indicator(__("Not a valid user"), 'red');
-				} else if (data.message=='not allowed') {
-					login.set_indicator(__("Not Allowed"), 'red');
-				}
-
-
-			} else if(window.location.hash === '#signup') {
-				if(cint(data.message[0])==0) {
-					login.set_indicator(data.message[1], 'red');
-				} else {
-					login.set_indicator(__('Success'), 'green');
-					frappe.msgprint(data.message[1])
-				}
-				//login.set_indicator(__(data.message), 'green');
+			} else if(["#signup", "#forgot"].indexOf(window.location.hash)!==-1) {
+				frappe.msgprint(data.message);
 			}
 		},
-		401: get_error_handler(__("Invalid Login. Try again.")),
+		401: get_error_handler(__("Invalid Login")),
 		417: get_error_handler(__("Oops! Something went wrong"))
 	};
 

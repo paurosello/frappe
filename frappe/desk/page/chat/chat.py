@@ -15,6 +15,7 @@ def get_list(arg=None):
 	frappe.form_dict['user'] = frappe.session['user']
 
 	# set all messages as read
+	frappe.db.begin()
 	frappe.db.sql("""UPDATE `tabCommunication` set seen = 1
 		where
 			communication_type in ('Chat', 'Notification')
@@ -26,22 +27,18 @@ def get_list(arg=None):
 
 	frappe.local.flags.commit = True
 
-	fields = '''name, owner, modified, content, communication_type,
-		comment_type, reference_doctype, reference_name'''
-
 	if frappe.form_dict.contact == 'Bot':
-		return frappe.db.sql("""select {0} from `tabCommunication`
+		return frappe.db.sql("""select * from `tabCommunication`
 			where
 				comment_type = 'Bot'
 				and reference_doctype = 'User'
 				and reference_name = %(user)s
 			order by creation desc
-			limit %(limit_start)s, %(limit_page_length)s""".format(fields),
-			frappe.local.form_dict, as_dict=1)
+			limit %(limit_start)s, %(limit_page_length)s""", frappe.local.form_dict, as_dict=1)
 
 	if frappe.form_dict.contact == frappe.session.user:
 		# return messages
-		return frappe.db.sql("""select {0} from `tabCommunication`
+		return frappe.db.sql("""select * from `tabCommunication`
 			where
 				communication_type in ('Chat', 'Notification')
 				and comment_type != 'Bot'
@@ -50,8 +47,7 @@ def get_list(arg=None):
 					or reference_name=%(user)s
 					or owner=reference_name)
 			order by creation desc
-			limit %(limit_start)s, %(limit_page_length)s""".format(fields),
-			frappe.local.form_dict, as_dict=1)
+			limit %(limit_start)s, %(limit_page_length)s""", frappe.local.form_dict, as_dict=1)
 	else:
 		return frappe.db.sql("""select * from `tabCommunication`
 			where
@@ -60,8 +56,7 @@ def get_list(arg=None):
 				and ((owner=%(contact)s and reference_name=%(user)s)
 					or (owner=%(contact)s and reference_name=%(contact)s))
 			order by creation desc
-			limit %(limit_start)s, %(limit_page_length)s""".format(fields),
-			frappe.local.form_dict, as_dict=1)
+			limit %(limit_start)s, %(limit_page_length)s""", frappe.local.form_dict, as_dict=1)
 
 @frappe.whitelist()
 def get_active_users():

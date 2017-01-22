@@ -6,7 +6,6 @@ import frappe
 import json, os
 from frappe import _
 from frappe.model.document import Document
-from frappe.core.doctype.role.role import get_emails_from_role
 from frappe.utils import validate_email_add, nowdate
 from frappe.utils.jinja import validate_template
 from frappe.modules.utils import export_module_json, get_doc_module
@@ -106,13 +105,6 @@ def get_context(context):
 				recipient.cc = recipient.cc.replace(",", "\n")
 				recipients = recipients + recipient.cc.split("\n")
 
-			#For sending emails to specified role
-			if recipient.email_by_role:
-				emails = get_emails_from_role(recipient.email_by_role)
-
-				for email in emails:
-					recipients = recipients + email.split("\n")
-
 		if not recipients:
 			return
 
@@ -190,13 +182,8 @@ def evaluate_alert(doc, alert, event):
 				return
 
 		if event=="Value Change" and not doc.is_new():
-			db_value = frappe.db.get_value(doc.doctype, doc.name, alert.value_changed)
-			
-			# cast to string if not already for comparing to doc.get's value
-			if not isinstance(db_value, basestring):
-				db_value = str(frappe.db.get_value(doc.doctype, doc.name, alert.value_changed))
-			
-			if doc.get(alert.value_changed) == db_value:
+			if doc.get(alert.value_changed) == frappe.db.get_value(doc.doctype,
+				doc.name, alert.value_changed):
 				return # value not changed
 
 		if event != "Value Change" and not doc.is_new():

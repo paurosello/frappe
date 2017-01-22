@@ -2,113 +2,104 @@
 // MIT License. See license.txt
 
 frappe.search = {
-	setup: function(element) {
-		var $input = $(element);
-		var input = $input.get(0);
-
-		var awesomplete = new Awesomplete(input, {
-			minChars: 0,
-			maxItems: 99,
-			autoFirst: true,
-			list: [],
-			filter: function (text, term) { return true; },
-			item: function(item, term) {
-				var d = item;
-				var html = "<span>" + __(d.label || d.value) + "</span>";
-				if(d.description && d.value!==d.description) {
-					html += '<br><span class="text-muted">' + __(d.description) + '</span>';
+	setup: function() {
+		var opts = {
+			autoFocus: true,
+			minLength: 0,
+			source: function(request, response) {
+				var txt = strip(request.term);
+				frappe.search.options = [];
+				if(txt) {
+					var lower = strip(txt.toLowerCase());
+					$.each(frappe.search.verbs, function(i, action) {
+						action(lower);
+					});
 				}
-				return $('<li></li>')
-					.data('item.autocomplete', d)
-					.html('<a style="font-weight:normal"><p>' + html + '</p></a>')
-					.get(0);
-			},
-			sort: function(a, b) { return 0; }
-		});
 
-		$input.on("input", function(e) {
-			var value = e.target.value;
-			var txt = strip(value);
-			frappe.search.options = [];
-			if(txt) {
-				var lower = strip(txt.toLowerCase());
-				$.each(frappe.search.verbs, function(i, action) {
-					action(lower);
-				});
-			}
+				// sort options
+				frappe.search.options.sort(function(a, b) {
+					return (a.match || "").length - (b.match || "").length; });
 
-			// sort options
-			frappe.search.options.sort(function(a, b) {
-				return (a.match || "").length - (b.match || "").length; });
+				frappe.search.add_recent(txt || "");
+				frappe.search.add_help();
 
-			frappe.search.add_recent(txt || "");
-			frappe.search.add_help();
-
-			// de-duplicate
-			var out = [], routes = [];
-			frappe.search.options.forEach(function(option) {
-				if(option.route) {
-					var str_route = (typeof option.route==='string') ?
-							option.route : option.route.join('/');
-					if(routes.indexOf(str_route)===-1) {
+				// de-duplicate
+				var out = [], routes = [];
+				frappe.search.options.forEach(function(option) {
+					if(option.route) {
+						var str_route = (typeof option.route==='string') ?
+							 option.route : option.route.join('/');
+						if(routes.indexOf(str_route)===-1) {
+							out.push(option);
+							routes.push(str_route);
+						}
+					} else {
 						out.push(option);
-						routes.push(str_route);
 					}
-				} else {
-					out.push(option);
+ 				});
+
+				response(out);
+			},
+			open: function(event, ui) {
+				frappe.search.autocomplete_open = event.target;
+			},
+			close: function(event, ui) {
+				frappe.search.autocomplete_open = false;
+			},
+			select: function(event, ui) {
+				if(ui.item.route_options) {
+					frappe.route_options = ui.item.route_options;
 				}
-			});
-			awesomplete.list = out;
-		});
+
+				if(ui.item.onclick) {
+					ui.item.onclick(ui.item.match);
+				} else {
+					var previous_hash = window.location.hash;
+					frappe.set_route(ui.item.route);
+
+					// hashchange didn't fire!
+					if (window.location.hash == previous_hash) {
+						frappe.route();
+					}
+				}
+				$(this).val('');
+				return false;
+			}
+		};
+
 
 		var open_recent = function() {
 			if (!frappe.search.autocomplete_open) {
-				$(this).trigger("input");
+				$(this).autocomplete("search", "");
 			}
 		}
-		$input.on("focus", open_recent);
 
-		$input.on("awesomplete-open", function(e) {
-			frappe.search.autocomplete_open = e.target;
-		});
+		$("#navbar-search")
+			.on("focus", open_recent)
+			.autocomplete(opts).data('ui-autocomplete')._renderItem =
+				frappe.search.render_item;
 
-		$input.on("awesomplete-close", function(e) {
-			frappe.search.autocomplete_open = false;
-		});
-
-		$input.on("awesomplete-select", function(e) {
-			var o = e.originalEvent;
-			var value = o.text.value;
-			var item = awesomplete.get_item(value);
-
-			if(item.route_options) {
-				frappe.route_options = item.route_options;
-			}
-
-			if(item.onclick) {
-				item.onclick(item.match);
-			} else {
-				var previous_hash = window.location.hash;
-				frappe.set_route(item.route);
-
-				// hashchange didn't fire!
-				if (window.location.hash == previous_hash) {
-					frappe.route();
-				}
-			}
-		});
-
-		$input.on("awesomplete-selectcomplete", function(e) {
-			$input.val("");
-		});
+		$("#modal-search")
+			.on("focus", open_recent)
+			.autocomplete(opts).data('ui-autocomplete')._renderItem =
+				frappe.search.render_item;
 
 		frappe.search.make_page_title_map();
 		frappe.search.setup_recent();
 	},
+	render_item: function(ul, d) {
+		var html = "<span>" + __(d.label || d.value) + "</span>";
+		if(d.description && d.value!==d.description) {
+			html += '<br><span class="text-muted">' + __(d.description) + '</span>';
+		}
+		return $('<li></li>')
+			.data('item.autocomplete', d)
+			.html('<a><p>' + html + '</p></a>')
+			.appendTo(ul);
+	},
 	add_help: function() {
 		frappe.search.options.push({
 			label: __("Help on Search"),
-			value: "Help on Search",
 			onclick: function() {
 				var txt = '<table class="table table-bordered">\
 					<tr><td style="width: 50%">'+__("Make a new record")+'</td><td>'+
@@ -185,7 +176,7 @@ frappe.search = {
 			} else {
 				_item = item;
 			}
-			_item = __(_item || '').toLowerCase().replace(/-/g, " ");
+			_item = __(_item).toLowerCase().replace(/-/g, " ");
 			if(txt===_item || _item.indexOf(txt) !== -1) {
 				var option = process(item);
 

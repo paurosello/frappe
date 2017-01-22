@@ -48,9 +48,6 @@ frappe.ui.form.on('Auto Email Report', {
 			}
 		}
 	},
-	report: function(frm) {
-		frm.set_value('filters', '');
-	},
 	show_filters: function(frm) {
 		var wrapper = $(frm.get_field('filters_display').wrapper);
 		wrapper.empty();

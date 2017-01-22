@@ -100,7 +100,6 @@ frappe.views.ListView = Class.extend({
 					me.fields.push(d);
 			});
 		}
-		me.fields = me.fields.concat(me.meta.__kanban_column_fields);
 	},
 	set_columns: function() {
 		var me = this;

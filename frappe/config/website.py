@@ -19,10 +19,6 @@ def get_data():
 				},
 				{
 					"type": "doctype",
-					"name": "Website Sidebar",
-				},
-				{
-					"type": "doctype",
 					"name": "Website Slideshow",
 					"description": _("Embed image slideshows in website pages."),
 				},

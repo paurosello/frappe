@@ -31,7 +31,8 @@ p {
   color: #d1d8dd !important;
 }
 a,
-.badge {
+.badge,
+.ui-menu .ui-menu-item {
   -webkit-transition: 0.2s;
   -o-transition: 0.2s;
   transition: 0.2s;

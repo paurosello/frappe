@@ -34,7 +34,7 @@ def send_message(subject="Website Query", message="", sender=""):
 		return
 
 	if not sender:
-		frappe.response["message"] = 'Email Address Required'
+		frappe.response["message"] = 'Email Id Required'
 		return
 
 	# guest method, cap max writes per hour
