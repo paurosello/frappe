@@ -92,7 +92,7 @@ frappe.views.ReportView = frappe.ui.Listing.extend({
 		this.add_totals_row = 0;
 		this.page = this.parent.page;
 		this._body = $('<div>').appendTo(this.page.main);
-		this.page_title = __('Report')+ ': ' + __(this.docname ? (this.doctype + ' - ' + this.docname) : this.doctype);
+		this.page_title = __('Report')+ ': ' + __(this.docname ? (__(this.doctype) + ' - ' + this.docname) : this.doctype);
 		this.page.set_title(this.page_title);
 		this.init_list_settings();
 		this.make({
