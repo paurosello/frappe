@@ -168,14 +168,23 @@ _f.Frm.prototype.setup_print_layout = function() {
 }
 
 _f.Frm.prototype.print_doc = function() {
-	if(this.print_preview.wrapper.is(":visible")) {
-		this.hide_print();
-		return;
+
+    var w = window.open(
+					frappe.urllib.get_full_url("/api/method/frappe.utils.print_format.download_pdf?"
+					+"doctype="+encodeURIComponent(this.doc.doctype)
+					+"&name="+encodeURIComponent(this.doc.name)));
+	if(!w) {
+					msgprint(__("Please enable pop-ups")); return;
 	}
-	if(!frappe.model.can_print(this.doc.doctype, this)) {
-		msgprint(__("You are not allowed to print this document"));
-		return;
-	}
+
+//	if(this.print_preview.wrapper.is(":visible")) {
+//		this.hide_print();
+//		return;
+//	}
+//	if(!frappe.model.can_print(this.doc.doctype, this)) {
+//		msgprint(__("You are not allowed to print this document"));
+//		return;
+//	}
 
 	this.print_preview.refresh_print_options().trigger("change");
 	this.page.set_view("print");
