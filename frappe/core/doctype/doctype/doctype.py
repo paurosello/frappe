@@ -3,8 +3,9 @@
 
 from __future__ import unicode_literals
 
+import six
+
 import re, copy, os
-import MySQLdb
 import frappe
 from frappe import _
 
@@ -16,6 +17,10 @@ from frappe.desk.notifications import delete_notification_count_for
 from frappe.modules import make_boilerplate
 from frappe.model.db_schema import validate_column_name, validate_column_length
 import frappe.website.render
+
+# imports - third-party imports
+import pymysql
+from pymysql.constants import ER
 
 class InvalidFieldNameError(frappe.ValidationError): pass
 
@@ -291,6 +296,8 @@ class DocType(Document):
 		`doctype` property for Single type."""
 		if self.issingle:
 			frappe.db.sql("""update tabSingles set doctype=%s where doctype=%s""", (new, old))
+			frappe.db.sql("""update tabSingles set value=%s
+				where doctype=%s and field='name' and value = %s""", (new, new, old))
 		else:
 			frappe.db.sql("rename table `tab%s` to `tab%s`" % (old, new))
 
@@ -376,7 +383,10 @@ class DocType(Document):
 
 		# a DocType's name should not start with a number or underscore
 		# and should only contain letters, numbers and underscore
-		is_a_valid_name = re.match("^(?![\W])[^\d_\s][\w -]+$", name, re.UNICODE)
+		if six.PY2:
+			is_a_valid_name = re.match("^(?![\W])[^\d_\s][\w -]+$", name)
+		else:
+			is_a_valid_name = re.match("^(?![\W])[^\d_\s][\w -]+$", name, flags = re.ASCII)
 		if not is_a_valid_name:
 			frappe.throw(_("DocType's name should start with a letter and it can only consist of letters, numbers, spaces and underscores"), frappe.NameError)
 
@@ -482,8 +492,8 @@ def validate_fields(meta):
 						group by `{fieldname}` having count(*) > 1 limit 1""".format(
 						doctype=d.parent, fieldname=d.fieldname))
 
-				except MySQLdb.OperationalError as e:
-					if e.args and e.args[0]==1054:
+				except pymysql.InternalError as e:
+					if e.args and e.args[0] == ER.BAD_FIELD_ERROR:
 						# ignore if missing column, else raise
 						# this happens in case of Custom Field
 						pass
@@ -615,6 +625,7 @@ def validate_fields(meta):
 	for d in fields:
 		if not d.permlevel: d.permlevel = 0
 		if d.fieldtype != "Table": d.allow_bulk_edit = 0
+		if d.fieldtype == "Barcode": d.ignore_xss_filter = 1
 		if not d.fieldname:
 			frappe.throw(_("Fieldname is required in row {0}").format(d.idx))
 		d.fieldname = d.fieldname.lower()
@@ -764,7 +775,8 @@ def validate_permissions(doctype, for_remove=False):
 def make_module_and_roles(doc, perm_fieldname="permissions"):
 	"""Make `Module Def` and `Role` records if already not made. Called while installing."""
 	try:
-		if doc.restrict_to_domain and not frappe.db.exists('Domain', doc.restrict_to_domain):
+		if hasattr(doc,'restrict_to_domain') and doc.restrict_to_domain and \
+			not frappe.db.exists('Domain', doc.restrict_to_domain):
 			frappe.get_doc(dict(doctype='Domain', domain=doc.restrict_to_domain)).insert()
 
 		if not frappe.db.exists("Module Def", doc.module):

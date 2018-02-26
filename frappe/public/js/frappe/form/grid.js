@@ -171,8 +171,6 @@ frappe.ui.form.Grid = Class.extend({
 			// redraw
 			var _scroll_y = $(document).scrollTop();
 			this.make_head();
-			// to hide checkbox if grid is not editable
-			this.header_row && this.header_row.toggle_check();
 
 			if(!this.grid_rows) {
 				this.grid_rows = [];
@@ -311,7 +309,7 @@ frappe.ui.form.Grid = Class.extend({
 		}
 
 		new Sortable($rows.get(0), {
-			group: {name: 'row'},
+			group: {name: me.df.fieldname},
 			handle: '.sortable-handle',
 			draggable: '.grid-row',
 			filter: 'li, a',
@@ -361,7 +359,7 @@ frappe.ui.form.Grid = Class.extend({
 	},
 	set_editable_grid_column_disp: function(fieldname, show) {
 		//Hide columns for editable grids
-		if (this.meta.editable_grid) {
+		if (this.meta.editable_grid && this.grid_rows) {
 			this.grid_rows.forEach(function(row) {
 				row.columns_list.forEach(function(column) {
 					//Hide the column specified
@@ -480,7 +478,7 @@ frappe.ui.form.Grid = Class.extend({
 	},
 
 	setup_visible_columns: function() {
-		if(this.visible_columns) return;
+		if (this.visible_columns) return;
 
 		var total_colsize = 1,
 			fields = this.editable_fields || this.docfields;
@@ -502,22 +500,6 @@ frappe.ui.form.Grid = Class.extend({
 					df.colsize=df.columns;
 				}
 				else {
-					var colsize=2;
-					switch(df.fieldtype) {
-						case"Text":
-						case"Small Text":
-							colsize=3;
-							break;
-						case"Check":
-							colsize=1
-					}
-					df.colsize=colsize;
-				}
-
-				if(df.columns) {
-					df.colsize=df.columns;
-				}
-				else {
 					var colsize = 2;
 					switch(df.fieldtype) {
 						case "Text":
@@ -525,6 +507,14 @@ frappe.ui.form.Grid = Class.extend({
 						case"Check": colsize = 1;
 					}
 					df.colsize = colsize;
+				}
+
+				// attach formatter on refresh
+				if (df.fieldtype == 'Link' && !df.formatter && frappe.meta.docfield_map[df.parent]) {
+					const docfield = frappe.meta.docfield_map[df.parent][df.fieldname];
+					if (docfield && docfield.formatter) {
+						df.formatter = docfield.formatter;
+					}
 				}
 
 				total_colsize += df.colsize;
@@ -611,7 +601,7 @@ frappe.ui.form.Grid = Class.extend({
 
 						me.frm.clear_table(me.df.fieldname);
 						$.each(data, function(i, row) {
-							if(i > 4) {
+							if(i > 6) {
 								var blank_row = true;
 								$.each(row, function(ci, value) {
 									if(value) {
@@ -659,12 +649,19 @@ frappe.ui.form.Grid = Class.extend({
 			data.push([]);
 			data.push([]);
 			data.push([]);
+			data.push([__("The CSV format is case sensitive")]);
+			data.push([__("Do not edit headers which are preset in the template")]);
 			data.push(["------"]);
 			$.each(frappe.get_meta(me.df.options).fields, function(i, df) {
-				if(frappe.model.is_value_type(df.fieldtype)) {
+				// don't include the hidden field in the template
+				if(frappe.model.is_value_type(df.fieldtype) && !df.hidden) {
 					data[1].push(df.label);
 					data[2].push(df.fieldname);
-					data[3].push(df.description || "");
+					let description = (df.description || "") + ' ';
+					if (df.fieldtype === "Date") {
+						description += frappe.boot.sysdefaults.date_format;
+					}
+					data[3].push(description);
 					docfields.push(df);
 				}
 			});
