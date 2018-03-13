@@ -29,6 +29,7 @@ frappe.views.TreeView = Class.extend({
 
 		this.opts = {};
 		this.opts.get_tree_root = true;
+		this.opts.show_expand_all = true;
 		$.extend(this.opts, opts);
 		this.doctype = opts.doctype;
 		this.args = {doctype: me.doctype};
@@ -63,15 +64,18 @@ frappe.views.TreeView = Class.extend({
 		frappe.container.change_to(this.page_name);
 		frappe.breadcrumbs.add(me.opts.breadcrumb || locals.DocType[me.doctype].module);
 
-		this.page.set_title(me.opts.title || __('{0} Tree',[__(this.doctype)]) );
+		this.set_title();
+
 		this.page.main.css({
 			"min-height": "300px",
 			"padding-bottom": "25px"
 		});
 
-		this.page.add_inner_button(__('Expand All'), function() {
-			me.tree.rootnode.load_all();
-		});
+		if(this.opts.show_expand_all) {
+			this.page.add_inner_button(__('Expand All'), function() {
+				me.tree.rootnode.load_all();
+			});
+		}
 
 		if(this.opts.view_template) {
 			var row = $('<div class="row"><div>').appendTo(this.page.main);
@@ -80,6 +84,9 @@ frappe.views.TreeView = Class.extend({
 		} else {
 			this.body = this.page.main;
 		}
+	},
+	set_title: function() {
+		this.page.set_title(this.opts.title || __('{0} Tree', [__(this.doctype)]));
 	},
 	onload: function() {
 		var me = this;
@@ -93,16 +100,20 @@ frappe.views.TreeView = Class.extend({
 				filter.default = frappe.route_options[filter.fieldname]
 			}
 
-			me.page.add_field(filter).$input
-				.on('change', function() {
-					var val = $(this).val();
-					if(val) {
-						me.args[$(this).attr("data-fieldname")] = val;
-						frappe.treeview_settings.filters = me.args;
-						me.make_tree();
-						me.page.set_title(val);
-					}
-				})
+			filter.change = function() {
+				var val = this.get_value();
+				me.args[filter.fieldname] = val;
+				if (val) {
+					me.root_label = val;
+					me.page.set_title(val);
+				} else {
+					me.root_label = me.opts.root_label;
+					me.set_title();
+				}
+				me.make_tree();
+			}
+
+			me.page.add_field(filter);
 
 			if (filter.default) {
 				$("[data-fieldname='"+filter.fieldname+"']").trigger("change");
@@ -116,7 +127,7 @@ frappe.views.TreeView = Class.extend({
 			args: me.args,
 			callback: function(r) {
 				if (r.message) {
-					me.root = r.message[0]["value"];
+					me.root_label = r.message[0]["value"];
 					me.make_tree();
 				}
 			}
@@ -124,10 +135,11 @@ frappe.views.TreeView = Class.extend({
 	},
 	make_tree: function() {
 		var me = this;
-		$(me.parent).find(".tree").remove()
+		$(me.parent).find(".tree").remove();
+
 		this.tree = new frappe.ui.Tree({
 			parent: me.body,
-			label: me.args[me.opts.root_label] || me.opts.root_label || me.root,
+			label: me.args[me.opts.root_label] || me.root_label || me.opts.root_label,
 			args: me.args,
 			method: me.get_tree_nodes,
 			toolbar: me.get_toolbar(),
@@ -156,7 +168,7 @@ frappe.views.TreeView = Class.extend({
 			{
 				label:__(me.can_write? "Edit": "Details"),
 				condition: function(node) {
-					return !node.root && me.can_read;
+					return !node.is_root && me.can_read;
 				},
 				click: function(node) {
 					frappe.set_route("Form", me.doctype, node.label);
@@ -172,7 +184,13 @@ frappe.views.TreeView = Class.extend({
 			},
 			{
 				label:__("Rename"),
-				condition: function(node) { return !node.root && me.can_write; },
+				condition: function(node) {
+					let allow_rename = true;
+					if (me.doctype && frappe.get_meta(me.doctype)) {
+						if(!frappe.get_meta(me.doctype).allow_rename) allow_rename = false;
+					}
+					return !node.is_root && me.can_write && allow_rename;
+				},
 				click: function(node) {
 					frappe.model.rename_doc(me.doctype, node.label, function(new_name) {
 						node.tree_link.find('a').text(new_name);
@@ -183,7 +201,7 @@ frappe.views.TreeView = Class.extend({
 			},
 			{
 				label:__("Delete"),
-				condition: function(node) { return !node.root && me.can_delete; },
+				condition: function(node) { return !node.is_root && me.can_delete; },
 				click: function(node) {
 					frappe.model.delete_doc(me.doctype, node.label, function() {
 						node.parent.remove();
@@ -234,12 +252,11 @@ frappe.views.TreeView = Class.extend({
 			v.parent = node.label;
 			v.doctype = me.doctype;
 
-			if(node.root) {
-				v.is_root = 1;
-				v.parent_account = null;
-			} else {
-				v.is_root = 0;
-				v.root_type = null;
+			if(node.is_root){
+				v['is_root'] = node.is_root;
+			}
+			else{
+				v['is_root'] = false;
 			}
 
 			$.extend(args, v)

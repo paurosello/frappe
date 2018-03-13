@@ -669,10 +669,12 @@ frappe.views.GridReportWithPlot = frappe.views.GridReport.extend({
 		if (in_list(["Daily", "Weekly"], this.filter_inputs.range.val())) {
 			this.chart_area.toggle(false);
 			return;
+		} else {
+			this.chart_area.toggle(true);
 		}
 		var chart_data = this.get_chart_data ? this.get_chart_data() : null;
 
-		this.chart = new frappe.chart.FrappeChart({
+		this.chart = new Chart({
 			parent: ".chart",
 			height: 200,
 			data: chart_data,
