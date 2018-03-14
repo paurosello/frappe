@@ -244,7 +244,7 @@ frappe.ui.Filter = Class.extend({
 		this.wrapper.find(".set-filter-and-run").on("click", function() {
 			me.wrapper.removeClass("is-new-filter");
 			me.flist.base_list.run();
-			me.apply();
+			//CUSTOM CODE SIGEAS me.apply();
 		});
 
 		// add help for "in" codition
