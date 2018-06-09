@@ -24,6 +24,6 @@ class FrappeConnection(BaseConnection):
 	def delete(self, doctype, migration_id):
 		return self.connection.delete(doctype, migration_id)
 
-	def get(self, doctype, fields='"*"', filters=None, start=0, page_length=20):
+	def get(self, doctype, fields='"*"', filters=None, start=0, page_length=20, parent=None):
 		return self.connection.get_list(doctype, fields=fields, filters=filters,
-				limit_start=start, limit_page_length=page_length)
+				limit_start=start, limit_page_length=page_length, parent=parent)
