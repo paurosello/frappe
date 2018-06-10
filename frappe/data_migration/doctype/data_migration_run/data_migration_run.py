@@ -215,10 +215,24 @@ class DataMigrationRun(Document):
 		filters = mapping.get_filters() or {}
 		connection = self.get_connection()
 
-		return connection.get(mapping.remote_objectname,
+		docs = connection.get(mapping.remote_objectname,
 			fields=["*"], filters=filters, start=start,
 			page_length=mapping.page_length)
 
+		for field in mapping.fields:
+			if field.is_child_table:
+
+				child_mapping_doctype = frappe.get_value("Data Migration Mapping", 
+															field.child_table_mapping, 
+															"remote_objectname")
+
+				for doc in docs:
+					doc[field.local_fieldname] = connection.get(child_mapping_doctype,
+															fields=["*"], filters={"parent": doc["name"]}, parent=mapping.remote_objectname)
+		
+
+		return docs
+	
 	def get_count(self, mapping):
 		filters = mapping.get_filters() or {}
 		or_filters = self.get_or_filters(mapping)

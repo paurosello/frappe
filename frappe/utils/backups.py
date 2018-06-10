@@ -119,6 +119,8 @@ class BackupGenerator:
 		cmd_string = 'gzip %(backup_path_db)s '% args
 		err, out = frappe.utils.execute_in_shell(cmd_string)
 
+		self.backup_path_db = "{0}.gz".format(self.backup_path_db)
+
 	def send_email(self):
 		"""
 			Sends the link to backup file located at erpnext/backups

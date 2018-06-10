@@ -5,7 +5,7 @@ from frappe.utils.password import get_decrypted_password
 class BaseConnection(with_metaclass(ABCMeta)):
 
 	@abstractmethod
-	def get(self, remote_objectname, fields=None, filters=None, start=0, page_length=10):
+	def get(self, remote_objectname, fields=None, filters=None, start=0, page_length=10, parent=None):
 		pass
 
 	@abstractmethod

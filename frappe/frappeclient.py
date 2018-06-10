@@ -48,13 +48,15 @@ class FrappeClient(object):
 			'cmd': 'logout',
 		}, verify=self.verify, headers=self.headers)
 
-	def get_list(self, doctype, fields='"*"', filters=None, limit_start=0, limit_page_length=0):
+	def get_list(self, doctype, fields='"*"', filters=None, limit_start=0, limit_page_length=0, parent=None):
 		"""Returns list of records of a particular type"""
 		if not isinstance(fields, string_types):
 			fields = json.dumps(fields)
 		params = {
 			"fields": fields,
 		}
+		if parent:
+			params["parent"] = parent
 		if filters:
 			params["filters"] = json.dumps(filters)
 		if limit_page_length:
