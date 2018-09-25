@@ -227,7 +227,7 @@ class DataMigrationRun(Document):
 															"remote_objectname")
 
 				for doc in docs:
-					doc[field.local_fieldname] = connection.get(child_mapping_doctype,
+					doc[field.local_fieldname] = connection.get(child_mapping_doctype, page_length=mapping.page_length,
 															fields=["*"], filters={"parent": doc["name"]}, parent=mapping.remote_objectname)
 		
 
