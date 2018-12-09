@@ -24,31 +24,32 @@ varchar_len = '140'
 standard_varchar_columns = ('name', 'owner', 'modified_by', 'parent', 'parentfield', 'parenttype')
 
 type_map = {
-	'Currency':		('decimal', '18,6')
-	,'Int':			('int', '11')
-	,'Float':		('decimal', '18,6')
-	,'Percent':		('decimal', '18,6')
-	,'Check':		('int', '1')
-	,'Small Text':		('text', '')
-	,'Long Text':		('longtext', '')
-	,'Code':		('longtext', '')
-	,'Text Editor':		('longtext', '')
-	,'Date':		('date', '')
-	,'Datetime':		('datetime', '6')
-	,'Time':		('time', '6')
-	,'Text':		('text', '')
-	,'Data':		('varchar', varchar_len)
-	,'Link':		('varchar', varchar_len)
-	,'Dynamic Link':	('varchar', varchar_len)
-	,'Password':		('varchar', varchar_len)
-	,'Select':		('varchar', varchar_len)
-	,'Read Only':		('varchar', varchar_len)
-	,'Attach':		('text', '')
-	,'Attach Image':	('text', '')
-	,'Signature':		('longtext', '')
-	,'Color':		('varchar', varchar_len)
-	,'Barcode':		('longtext', '')
-	,'Geolocation':		('longtext', '')
+	'Currency':		('decimal', '18,6'),
+	'Int':			('int', '11'),
+	'Long Int':		('bigint', '20'), # convert int to bigint if length is more than 11
+	'Float':		('decimal', '18,6'),
+	'Percent':		('decimal', '18,6'),
+	'Check':		('int', '1'),
+	'Small Text':		('text', ''),
+	'Long Text':		('longtext', ''),
+	'Code':			('longtext', ''),
+	'Text Editor':		('longtext', ''),
+	'Date':			('date', ''),
+	'Datetime':		('datetime', '6'),
+	'Time':			('time', '6'),
+	'Text':			('text', ''),
+	'Data':			('varchar', varchar_len),
+	'Link':			('varchar', varchar_len),
+	'Dynamic Link':		('varchar', varchar_len),
+	'Password':		('varchar', varchar_len),
+	'Select':		('varchar', varchar_len),
+	'Read Only':		('varchar', varchar_len),
+	'Attach':		('text', ''),
+	'Attach Image':		('text', ''),
+	'Signature':		('longtext', ''),
+	'Color':		('varchar', varchar_len),
+	'Barcode':		('longtext', ''),
+	'Geolocation':		('longtext', '')
 }
 
 default_columns = ['name', 'creation', 'modified', 'modified_by', 'owner',
@@ -198,7 +199,7 @@ class DbTable:
 			if k not in column_list:
 				d = self.columns[k].get_definition()
 				if d:
-					ret.append('`'+ k+ '` ' + d)
+					ret.append('`'+ k + '` ' + d)
 					column_list.append(k)
 		return ret
 
@@ -566,11 +567,10 @@ class DbManager:
 		self.db.sql("DROP TABLE IF EXISTS %s "%(table_name))
 
 def validate_column_name(n):
-	n = n.replace(' ','_').strip().lower()
 	special_characters = re.findall("[\W]", n, re.UNICODE)
 	if special_characters:
 		special_characters = ", ".join('"{0}"'.format(c) for c in special_characters)
-		frappe.throw(_("Fieldname {0} cannot have special characters like {1}").format(cstr(n), special_characters), InvalidColumnName)
+		frappe.throw(_("Fieldname {0} cannot have special characters like {1}").format(frappe.bold(cstr(n)), special_characters), InvalidColumnName)
 	return n
 
 def validate_column_length(fieldname):
@@ -598,6 +598,10 @@ def remove_all_foreign_keys():
 
 def get_definition(fieldtype, precision=None, length=None):
 	d = type_map.get(fieldtype)
+
+	# convert int to long int if the length of the int is greater than 11
+	if fieldtype == "Int" and length and length>11:
+		d = type_map.get("Long Int")
 
 	if not d:
 		return
