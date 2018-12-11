@@ -14,6 +14,7 @@ import frappe.permissions
 from frappe.utils import flt, cint, getdate, get_datetime, get_time, make_filter_tuple, get_filter, add_to_date
 from frappe import _
 from frappe.model import optional_fields
+from frappe.client import check_parent_permission
 from frappe.model.utils.user_settings import get_user_settings, update_user_settings
 from datetime import datetime
 
@@ -140,7 +141,7 @@ class DatabaseQuery(object):
 
 		if self.or_conditions:
 			args.conditions += (' or ' if args.conditions else "") + \
-				 ' or '.join(self.or_conditions)
+				' or '.join(self.or_conditions)
 
 		self.set_field_tables()
 
@@ -190,23 +191,42 @@ class DatabaseQuery(object):
 			As field contains `,` and mysql function `version()`, with the help of regex
 			the system will filter out this field.
 		'''
-		regex = re.compile('^.*[,();].*')
+
+		sub_query_regex = re.compile("^.*[,();].*")
 		blacklisted_keywords = ['select', 'create', 'insert', 'delete', 'drop', 'update', 'case']
 		blacklisted_functions = ['concat', 'concat_ws', 'if', 'ifnull', 'nullif', 'coalesce',
 			'connection_id', 'current_user', 'database', 'last_insert_id', 'session_user',
 			'system_user', 'user', 'version']
 
 		def _raise_exception():
-			frappe.throw(_('Cannot use sub-query or function in fields'), frappe.DataError)
+			frappe.throw(_('Use of sub-query or function is restricted'), frappe.DataError)
+
+		def _is_query(field):
+			if re.compile("^(select|delete|update|drop|create)\s").match(field):
+				_raise_exception()
+
+			elif re.compile("\s*[0-9a-zA-z]*\s*( from | group by | order by | where | join )").match(field):
+				_raise_exception()
 
 		for field in self.fields:
-			if regex.match(field):
-				if any(keyword in field.lower() for keyword in blacklisted_keywords):
+			if sub_query_regex.match(field):
+				if any(keyword in field.lower().split() for keyword in blacklisted_keywords):
 					_raise_exception()
 
-				if any("{0}(".format(keyword) in field.lower() \
-					for keyword in blacklisted_functions):
+				if any("({0}".format(keyword) in field.lower() for keyword in blacklisted_keywords):
 					_raise_exception()
+
+				if any("{0}(".format(keyword) in field.lower() for keyword in blacklisted_functions):
+					_raise_exception()
+
+			if re.compile("[0-9a-zA-Z]+\s*'").match(field):
+				_raise_exception()
+
+			if re.compile('[0-9a-zA-Z]+\s*,').match(field):
+				_raise_exception()
+
+			_is_query(field)
+
 
 	def extract_tables(self):
 		"""extract tables from fields"""
@@ -599,6 +619,20 @@ def get_order_by(doctype, meta):
 def get_list(doctype, *args, **kwargs):
 	'''wrapper for DatabaseQuery'''
 	kwargs.pop('cmd', None)
+	kwargs.pop('ignore_permissions', None)
+
+	# If doctype is child table
+	if frappe.is_table(doctype):
+		# Example frappe.db.get_list('Purchase Receipt Item', {'parent': 'Purchase Receipt'})
+		# Here purchase receipt is the parent doctype of the child doctype Purchase Receipt Item
+
+		if not kwargs.get('parent'):
+			frappe.flags.error_message = _('Parent is required to get child table data')
+			raise frappe.PermissionError(doctype)
+
+		check_parent_permission(kwargs.get('parent'), doctype)
+		del kwargs['parent']
+
 	return DatabaseQuery(doctype).execute(None, *args, **kwargs)
 
 def is_parent_only_filter(doctype, filters):
