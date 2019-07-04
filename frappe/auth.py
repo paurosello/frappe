@@ -121,6 +121,7 @@ class LoginManager:
 
 	def login(self):
 		# clear cache
+		self.run_trigger('before_login')
 		frappe.clear_cache(user = frappe.form_dict.get('usr'))
 		user, pwd = get_cached_user_pass()
 		self.authenticate(user=user, pwd=pwd)
