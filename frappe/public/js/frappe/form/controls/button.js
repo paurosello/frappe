@@ -1,4 +1,8 @@
 frappe.ui.form.ControlButton = frappe.ui.form.ControlData.extend({
+	can_write() {
+		// should be always true in case of button
+		return true;
+	},
 	make_input: function() {
 		var me = this;
 		this.$input = $('<button class="btn btn-default btn-xs">')
@@ -22,6 +26,9 @@ frappe.ui.form.ControlButton = frappe.ui.form.ControlData.extend({
 		else if(this.df.click) {
 			this.df.click();
 		}
+	},
+	hide() {
+		this.$input.hide();
 	},
 	set_input_areas: function() {
 		this._super();

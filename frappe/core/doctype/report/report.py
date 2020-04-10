@@ -12,6 +12,7 @@ from frappe.modules.export_file import export_to_files
 from frappe.modules import make_boilerplate
 from frappe.core.doctype.page.page import delete_custom_role
 from frappe.core.doctype.custom_role.custom_role import get_custom_allowed_roles
+from frappe.desk.reportview import append_totals_row
 from six import iteritems
 
 
@@ -73,10 +74,8 @@ class Report(Document):
 			return True
 
 	def update_report_json(self):
-		if self.json:
-			data = json.loads(self.json)
-			data["add_total_row"] = self.add_total_row
-			self.json = json.dumps(data)
+		if not self.json:
+			self.json = '{}'
 
 	def export_doc(self):
 		if frappe.flags.in_import:
@@ -97,7 +96,7 @@ class Report(Document):
 		columns = []
 		out = []
 
-		if self.report_type in ('Query Report', 'Script Report'):
+		if self.report_type in ('Query Report', 'Script Report', 'Custom Report'):
 			# query and script reports
 			data = frappe.desk.query_report.run(self.name, filters=filters, user=user)
 			for d in data.get('columns'):
@@ -121,7 +120,17 @@ class Report(Document):
 		else:
 			# standard report
 			params = json.loads(self.json)
-			columns = params.get('columns')
+
+			if params.get('fields'):
+				columns = params.get('fields')
+			elif params.get('columns'):
+				columns = params.get('columns')
+			else:
+				columns = [['name', self.ref_doctype]]
+				for df in frappe.get_meta(self.ref_doctype).fields:
+					if df.in_list_view:
+						columns.append([df.fieldname, self.ref_doctype])
+
 			_filters = params.get('filters') or []
 
 			if filters:
@@ -135,7 +144,13 @@ class Report(Document):
 				# sort by is saved as DocType.fieldname, covert it to sql
 				return '`tab{0}`.`{1}`'.format(*parts)
 
-			order_by = _format(params.get('sort_by').split('.')) + ' ' + params.get('sort_order')
+			if params.get('sort_by'):
+				order_by = _format(params.get('sort_by').split('.')) + ' ' + params.get('sort_order')
+			elif params.get('order_by'):
+				order_by = params.get('order_by')
+			else:
+				order_by = _format([self.ref_doctype, 'modified']) + ' desc'
+
 			if params.get('sort_by_next'):
 				order_by += ', ' + _format(params.get('sort_by_next').split('.')) + ' ' + params.get('sort_order_next')
 
@@ -148,6 +163,7 @@ class Report(Document):
 				user=user)
 
 			_columns = []
+
 			for column in columns:
 				meta = frappe.get_meta(column[1])
 				field = [meta.get_field(column[0]) or frappe._dict(label=meta.get_label(column[0]), fieldname=column[0])]
@@ -155,6 +171,9 @@ class Report(Document):
 			columns = _columns
 
 			out = out + [list(d) for d in result]
+
+			if params.get('add_totals_row'):
+				out = append_totals_row(out)
 
 		if as_dict:
 			data = []
@@ -175,3 +194,8 @@ class Report(Document):
 	@Document.whitelist
 	def toggle_disable(self, disable):
 		self.db_set("disabled", cint(disable))
+
+@frappe.whitelist()
+def is_prepared_report_disabled(report):
+	return frappe.db.get_value('Report',
+		report, 'disable_prepared_report') or 0
