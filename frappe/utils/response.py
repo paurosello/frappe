@@ -89,7 +89,7 @@ def as_json():
 def as_pdf():
 	response = Response()
 	response.mimetype = "application/pdf"
-	response.headers["Content-Disposition"] = ("filename=\"%s\"" % frappe.response['filename'].replace(' ', '_')).encode("utf-8")
+	response.headers["Content-Disposition"] = ("inline; filename=\"%s\"" % frappe.response['filename'].replace(' ', '_')).encode("utf-8")
 	response.data = frappe.response['filecontent']
 	return response
 
