@@ -4,7 +4,7 @@
 from cryptography.fernet import Fernet, InvalidToken
 from passlib.context import CryptContext
 from pypika.terms import Values
-from passlib.hash import pbkdf2_sha256
+from passlib.hash import pbkdf2_sha256, mysql41
 from passlib.registry import register_crypt_handler
 
 import frappe
