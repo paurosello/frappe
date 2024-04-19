@@ -128,6 +128,8 @@ class LoginManager:
 		if frappe.get_system_settings("disable_user_pass_login"):
 			frappe.throw(_("Login with username and password is not allowed."), frappe.AuthenticationError)
 
+		self.run_trigger("before_login")
+
 		# clear cache
 		frappe.clear_cache(user=frappe.form_dict.get("usr"))
 		user, pwd = get_cached_user_pass()
@@ -153,6 +155,7 @@ class LoginManager:
 		self.make_session()
 		self.setup_boot_cache()
 		self.set_user_info()
+		self.run_trigger("after_login")
 
 	def get_user_info(self):
 		self.info = frappe.get_cached_value(
