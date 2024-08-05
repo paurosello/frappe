@@ -1014,7 +1014,7 @@ class Document(BaseDocument):
 			"on_cancel": "Cancel",
 		}
 
-		if not self.flags.in_insert:
+		if not self.flags.in_insert and not self.flags.in_delete:
 			# value change is not applicable in insert
 			event_map["on_change"] = "Value Change"
 
@@ -1617,6 +1617,12 @@ class Document(BaseDocument):
 
 		DocTags(self.doctype).add(self.name, tag)
 
+	def remove_tag(self, tag):
+		"""Remove a Tag to this document"""
+		from frappe.desk.doctype.tag.tag import DocTags
+
+		DocTags(self.doctype).remove(self.name, tag)
+
 	def get_tags(self):
 		"""Return a list of Tags attached to this document"""
 		from frappe.desk.doctype.tag.tag import DocTags
@@ -1699,12 +1705,12 @@ def bulk_insert(
 	for child_table in doctype_meta.get_table_fields():
 		valid_column_map[child_table.options] = frappe.get_meta(child_table.options).get_valid_columns()
 		values_map[child_table.options] = _document_values_generator(
-			(
+			[
 				ch_doc
 				for ch_doc in (
 					child_docs for doc in documents for child_docs in doc.get(child_table.fieldname)
 				)
-			),
+			],
 			valid_column_map[child_table.options],
 		)
 
@@ -1731,8 +1737,9 @@ def _document_values_generator(
 
 @frappe.whitelist()
 def unlock_document(doctype: str | None = None, name: str | None = None, args=None):
+	# Backward compatibility
 	if not doctype and not name and args:
-		# Backward compatibility
+		args = json.loads(args)
 		doctype = str(args["doctype"])
 		name = str(args["name"])
 	frappe.get_doc(doctype, name).unlock()

@@ -167,6 +167,7 @@ frappe.ui.form.Form = class FrappeForm {
 			shortcut: "ctrl+p",
 			action: () => this.print_doc(),
 			description: __("Print document"),
+			condition: () => frappe.model.can_print(this.doctype, this) && !this.meta.issingle,
 		});
 
 		let grid_shortcut_keys = [
@@ -1234,6 +1235,15 @@ frappe.ui.form.Form = class FrappeForm {
 	// ACTIONS
 
 	print_doc() {
+		if (this.is_dirty()) {
+			frappe.toast({
+				message: __(
+					"This document has unsaved changes which might not appear in final PDF. <br> Consider saving the document before printing."
+				),
+				indicator: "yellow",
+			});
+		}
+
 		frappe.route_options = {
 			frm: this,
 		};
