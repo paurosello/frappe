@@ -1433,15 +1433,16 @@ export default class GridRow {
 		}
 
 		// refresh dependent fields
-		this.grid.visible_columns.forEach((col) => {
-			let df = col[0];
+		fields.forEach((df) => {
 			// check if the visible field is dependent on the changed value
 			if (
 				df.mandatory_depends_on?.includes(fieldname) ||
 				df.read_only_depends_on?.includes(fieldname)
 			) {
 				this.set_dependant_property(df);
-				this.refresh_field(df.fieldname);
+				if (fieldname !== df.fieldname) {
+					this.refresh_field(df.fieldname);
+				}
 			}
 		});
 	}
