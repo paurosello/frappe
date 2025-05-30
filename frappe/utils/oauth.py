@@ -126,6 +126,7 @@ def get_oauth2_authorize_url(provider: str, redirect_to: str) -> str:
 	data = {
 		"redirect_uri": get_redirect_uri(provider),
 		"state": state,
+		"prompt": "select_account"
 	}
 
 	oauth2_providers = get_oauth2_providers()
