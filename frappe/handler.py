@@ -177,6 +177,16 @@ def upload_file():
 	if frappe.session.user == "Guest":
 		if frappe.get_system_settings("allow_guests_to_upload_files"):
 			ignore_permissions = True
+			guest_allowed_docs = frappe.get_system_settings("allowed_doctypes_for_guest_uploads")
+			if guest_allowed_docs:
+				target_doctype = frappe.form_dict.doctype
+				allowed_docs = guest_allowed_docs.splitlines()
+				allowed_docs = [doc.strip() for doc in allowed_docs if doc.strip()]
+				if allowed_docs and target_doctype not in allowed_docs:
+					frappe.throw(
+						_("Guests are not allowed to upload files for {0} Doctype").format(target_doctype),
+						frappe.PermissionError,
+					)
 		else:
 			raise frappe.PermissionError
 	else:
@@ -236,6 +246,7 @@ def upload_file():
 	if method:
 		method = frappe.get_attr(method)
 		is_whitelisted(method)
+		is_valid_http_method(method)
 		return method()
 	else:
 		return frappe.get_doc(

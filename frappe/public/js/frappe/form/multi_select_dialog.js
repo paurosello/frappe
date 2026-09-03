@@ -18,6 +18,7 @@ frappe.ui.form.MultiSelectDialog = class MultiSelectDialog {
 		this.make();
 
 		this.selected_fields = new Set();
+		this.selected_items = {};
 	}
 
 	get_fields() {
@@ -343,8 +344,11 @@ frappe.ui.form.MultiSelectDialog = class MultiSelectDialog {
 			let name = $(this).attr("data-item-name").trim();
 			if ($(this).find(":checkbox").is(":checked")) {
 				me.selected_fields.add(name);
+				const item = me.results.find((r) => r.name === name);
+				if (item) me.selected_items[name] = item;
 			} else {
 				me.selected_fields.delete(name);
+				delete me.selected_items[name];
 			}
 		});
 
@@ -355,8 +359,11 @@ frappe.ui.form.MultiSelectDialog = class MultiSelectDialog {
 				const name = $(this).closest(".list-item-container").attr("data-item-name").trim();
 				if (checked) {
 					me.selected_fields.add(name);
+					const item = me.results.find((r) => r.name === name);
+					if (item) me.selected_items[name] = item;
 				} else {
 					me.selected_fields.delete(name);
+					delete me.selected_items[name];
 				}
 			});
 		});
@@ -525,13 +532,11 @@ frappe.ui.form.MultiSelectDialog = class MultiSelectDialog {
 	}
 
 	empty_list() {
-		// Store all checked items
-		let checked = this.results
-			.filter((result) => this.selected_fields.has(result.name))
-			.map((item) => ({
-				...item,
-				checked: true,
-			}));
+		// Store all checked items using selected_items map (persists across searches)
+		let checked = [...this.selected_fields].map((name) => ({
+			...(this.selected_items[name] || { name }),
+			checked: true,
+		}));
 
 		// Remove **all** items
 		this.$results.find(".list-item-container").remove();
@@ -542,13 +547,16 @@ frappe.ui.form.MultiSelectDialog = class MultiSelectDialog {
 
 	get_filters_from_setters() {
 		let me = this;
-		let filters = (this.get_query ? this.get_query().filters : {}) || {};
+		let query_filters = (this.get_query ? this.get_query().filters : {}) || {};
+		let filters = Array.isArray(query_filters)
+			? query_filters.slice()
+			: Object.assign({}, query_filters);
 		let filter_fields = [];
 
 		if ($.isArray(this.setters)) {
 			for (let df of this.setters) {
 				filters[df.fieldname] =
-					me.dialog.fields_dict[df.fieldname].get_value() || undefined;
+					me.dialog.fields_dict[df.fieldname].get_value() || df.default || undefined;
 				me.args[df.fieldname] = filters[df.fieldname];
 				filter_fields.push(df.fieldname);
 			}
@@ -629,9 +637,8 @@ frappe.ui.form.MultiSelectDialog = class MultiSelectDialog {
 
 	async add_parent_filters(filters) {
 		const parent_names = await this.get_filtered_parents_for_child_search();
-		if (parent_names.length) {
-			filters.push(["parent", "in", parent_names]);
-		}
+		// empty list must match nothing, else child search leaks every parent's rows
+		filters.push(["parent", "in", parent_names]);
 	}
 
 	add_custom_child_filters(filters) {
